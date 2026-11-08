@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { Aperture, CirclePlus, Search } from '@lucide/vue'
+import { onMounted } from 'vue'
+import { Aperture, Bell, CirclePlus } from '@lucide/vue'
+import { usePolling } from '../composables/usePolling'
 import { newPostOpen } from '../store/feed'
+import { refreshUnreadCount, unreadCount } from '../store/notifications'
+import { currentUser, isPhotographer } from '../store/session'
+import UserAvatar from './UserAvatar.vue'
+
+onMounted(() => refreshUnreadCount().catch(() => undefined))
+usePolling(refreshUnreadCount)
 </script>
 
 <template>
@@ -14,26 +22,34 @@ import { newPostOpen } from '../store/feed'
         <span class="text-xl font-bold tracking-tight">traceMark</span>
       </RouterLink>
 
-      <label
-        class="ml-2 hidden max-w-sm flex-1 items-center gap-2.5 rounded-full border border-line bg-card px-4 py-2 md:flex"
-      >
-        <Search class="size-4 text-muted" />
-        <input
-          type="search"
-          placeholder="Buscar fotos, fotógrafos e corridas"
-          class="w-full bg-transparent text-sm placeholder-muted outline-none"
-        />
-      </label>
-
       <div class="ml-auto flex items-center gap-2">
         <button
+          v-if="isPhotographer"
           type="button"
-          class="flex items-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-105"
+          class="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white transition hover:brightness-105"
           @click="newPostOpen = true"
         >
           <CirclePlus class="size-4" />
-          Novo post
+          <span class="hidden sm:inline">Nova publicação</span>
         </button>
+
+        <RouterLink
+          to="/notificacoes"
+          class="relative grid size-10 place-items-center rounded-full text-ink/70 transition hover:bg-sub"
+          :aria-label="`Notificações (${unreadCount} não lidas)`"
+        >
+          <Bell class="size-5" />
+          <span
+            v-if="unreadCount > 0"
+            class="absolute right-1 top-1 grid min-w-4.5 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-white"
+          >
+            {{ unreadCount > 99 ? '99+' : unreadCount }}
+          </span>
+        </RouterLink>
+
+        <RouterLink v-if="currentUser" to="/perfil" aria-label="Meu perfil">
+          <UserAvatar :name="currentUser.name" size="sm" />
+        </RouterLink>
       </div>
     </div>
   </header>

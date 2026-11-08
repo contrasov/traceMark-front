@@ -1,93 +1,65 @@
 <script setup lang="ts">
-import { BadgeCheck, Bookmark, Ellipsis, Eye, MessageCircle, Share2 } from '@lucide/vue'
-import { formatCount } from '../utils/count'
-import type { Post } from '../data/posts'
+import { RouterLink } from 'vue-router'
+import { CalendarDays, Tag } from '@lucide/vue'
+import type { Photo } from '../api/types'
+import { formatPrice, formatRelative, STATUS_CLASS, STATUS_LABEL } from '../utils/format'
+import PhotoImage from './PhotoImage.vue'
+import UserAvatar from './UserAvatar.vue'
 
-const props = defineProps<{ post: Post }>()
-
-const isLogo = props.post.handle === '@tracemark'
+defineProps<{ photo: Photo; showStatus?: boolean }>()
 </script>
 
 <template>
-  <router-link
-    :to="`/post/${post.id}`"
-    class="block rounded-3xl bg-card p-5 transition hover:brightness-[0.99]"
-  >
+  <article class="rounded-3xl bg-card p-5">
     <div class="flex items-start gap-3">
-      <span
-        class="grid size-12 shrink-0 place-items-center rounded-full text-lg"
-        :class="isLogo ? 'bg-brand font-black text-white' : 'bg-brand-soft'"
-      >
-        {{ post.avatar }}
-      </span>
+      <RouterLink :to="`/usuarios/${photo.photographer.id}`">
+        <UserAvatar :name="photo.photographer.name" size="lg" />
+      </RouterLink>
       <div class="min-w-0 flex-1">
-        <p class="flex items-center gap-1.5 text-sm font-bold">
-          {{ post.author }}
-          <BadgeCheck v-if="post.verified" class="size-4 text-brand" />
+        <RouterLink :to="`/usuarios/${photo.photographer.id}`" class="text-sm font-bold hover:underline">
+          {{ photo.photographer.name }}
+        </RouterLink>
+        <p class="text-xs text-muted">
+          {{ formatRelative(photo.publishedAt ?? photo.createdAt) }}
+          <template v-if="photo.eventName"> · {{ photo.eventName }}</template>
         </p>
-        <p class="text-xs text-muted">{{ post.time }} · {{ post.topic }}</p>
       </div>
-      <button
-        type="button"
-        class="rounded-full border border-brand px-4 py-1.5 text-xs font-bold text-brand transition hover:bg-brand-soft"
-        @click.prevent
+      <span
+        v-if="showStatus && photo.status !== 'PUBLISHABLE'"
+        class="rounded-full px-3 py-1 text-xs font-bold"
+        :class="STATUS_CLASS[photo.status]"
       >
-        Seguir
-      </button>
-      <button
-        type="button"
-        aria-label="Mais opções"
-        class="px-1 text-muted"
-        @click.prevent
-      >
-        <Ellipsis class="size-5" />
-      </button>
+        {{ STATUS_LABEL[photo.status] }}
+      </span>
+      <span class="rounded-full bg-acid px-3 py-1 text-sm font-extrabold text-[#16161d]">
+        {{ formatPrice(photo.price) }}
+      </span>
     </div>
 
-    <h2 class="mt-4 text-left text-xl leading-snug font-extrabold">
-      {{ post.title }}
-    </h2>
-    <p class="mt-2 text-left text-[15px] leading-relaxed text-ink/80">
-      {{ post.excerpt }}
-      <span class="font-bold text-brand"> Leia mais</span>
+    <RouterLink :to="`/post/${photo.id}`" class="block transition hover:brightness-[0.99]">
+      <h2 class="mt-4 text-left text-xl leading-snug font-extrabold">{{ photo.title }}</h2>
+      <p v-if="photo.description" class="mt-2 line-clamp-3 text-left text-[15px] leading-relaxed text-ink/80">
+        {{ photo.description }}
+      </p>
+      <PhotoImage :photo="photo" aspect class="mt-4" />
+    </RouterLink>
+
+    <p v-if="showStatus && photo.processingError" class="mt-3 text-xs text-red-600">
+      Motivo: {{ photo.processingError }}
     </p>
 
-    <img
-      v-if="post.image"
-      :src="post.image"
-      :alt="post.title"
-      class="mt-4 aspect-[16/9] w-full rounded-2xl object-cover"
-    >
-
-    <div class="mt-4 flex flex-wrap items-center gap-2">
-      <span
-        v-for="(reaction, i) in post.reactions"
-        :key="reaction.emoji"
-        class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold"
-        :class="i === 0 ? 'bg-brand-soft text-brand' : 'bg-sub text-ink/70'"
-      >
-        <span>{{ reaction.emoji }}</span>
-        {{ formatCount(reaction.count) }}
+    <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted">
+      <span v-if="photo.takenAt" class="flex items-center gap-1.5">
+        <CalendarDays class="size-4" />
+        {{ new Date(photo.takenAt).toLocaleDateString('pt-BR') }}
       </span>
-      <span class="size-7 rounded-full bg-sub text-center text-sm leading-7 text-ink/50">+</span>
+      <span v-if="photo.eventName" class="flex items-center gap-1.5">
+        <Tag class="size-4" />
+        {{ photo.eventName }}
+      </span>
+      <RouterLink :to="`/post/${photo.id}`" class="ml-auto font-bold text-brand hover:underline">
+        Ver detalhes e comentários
+      </RouterLink>
     </div>
-
-    <div class="mt-4 flex items-center gap-5 text-sm text-muted">
-      <span class="flex items-center gap-1.5">
-        <MessageCircle class="size-4" />
-        {{ post.comments.length }}
-      </span>
-      <span class="flex items-center gap-1.5">
-        <Bookmark class="size-4" />
-        {{ post.marks }}
-      </span>
-      <span class="flex items-center gap-1.5">
-        <Share2 class="size-4" />
-      </span>
-      <span class="ml-auto flex items-center gap-1.5">
-        <Eye class="size-4" />
-        {{ formatCount(post.views) }}
-      </span>
-    </div>
-  </router-link>
+  </article>
 </template>

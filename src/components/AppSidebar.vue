@@ -1,72 +1,52 @@
 <script setup lang="ts">
-import { RouterLink, useRoute } from 'vue-router'
-import { computed } from 'vue'
-import { House, MessageCircleQuestion, Settings, User } from '@lucide/vue'
-import { topics } from '../data/posts'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { Bell, House, LogOut, Settings, User } from '@lucide/vue'
+import { unreadCount } from '../store/notifications'
+import { logout } from '../store/session'
 
 const route = useRoute()
-const isActive = (name: string) => computed(() => route.name === name)
+const router = useRouter()
 
-const isHome = isActive('home')
-const isProfile = isActive('profile')
-const isSettings = isActive('settings')
+const links = [
+  { to: '/', name: 'home', label: 'Início', icon: House },
+  { to: '/notificacoes', name: 'notifications', label: 'Notificações', icon: Bell },
+  { to: '/perfil', name: 'profile', label: 'Perfil', icon: User },
+  { to: '/configuracoes', name: 'settings', label: 'Configurações', icon: Settings },
+]
+
+async function signOut() {
+  logout()
+  await router.replace('/entrar')
+}
 </script>
 
 <template>
   <nav class="space-y-1.5 text-sm" aria-label="Menu principal">
     <ul class="space-y-1">
-      <li>
+      <li v-for="link in links" :key="link.name">
         <RouterLink
-          to="/"
-          class="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold transition"
-          :class="isHome ? 'bg-card text-ink' : 'text-ink/70 hover:bg-card/70'"
+          :to="link.to"
+          class="flex items-center gap-3 rounded-2xl px-4 py-2.5 font-semibold transition"
+          :class="route.name === link.name ? 'bg-card text-ink' : 'text-ink/70 hover:bg-card'"
         >
-          <House class="size-5" :class="isHome ? 'text-brand' : 'text-muted'" />
-          Início
-        </RouterLink>
-      </li>
-      <li>
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold text-ink/70 transition hover:bg-card/70"
-        >
-          <MessageCircleQuestion class="size-5 text-muted" />
-          Dúvidas
-        </button>
-      </li>
-      <li>
-        <RouterLink
-          to="/perfil"
-          class="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold transition"
-          :class="isProfile ? 'bg-card text-ink' : 'text-ink/70 hover:bg-card/70'"
-        >
-          <User class="size-5" :class="isProfile ? 'text-brand' : 'text-muted'" />
-          Perfil
-        </RouterLink>
-      </li>
-      <li>
-        <RouterLink
-          to="/configuracoes"
-          class="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold transition"
-          :class="isSettings ? 'bg-card text-ink' : 'text-ink/70 hover:bg-card/70'"
-        >
-          <Settings class="size-5" :class="isSettings ? 'text-brand' : 'text-muted'" />
-          Configurações
-        </RouterLink>
-      </li>
-    </ul>
-
-    <p class="px-4 pb-1 pt-5 text-xs font-bold tracking-wide text-muted uppercase">Temas</p>
-    <ul class="space-y-0.5">
-      <li v-for="topic in topics" :key="topic.label">
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-xl px-3.5 py-2 text-left text-[13px] font-medium text-ink/80 transition hover:bg-card"
-        >
-          <span class="grid size-7 place-items-center rounded-lg bg-card text-base">
-            {{ topic.emoji }}
+          <component :is="link.icon" class="size-5" :class="route.name === link.name ? 'text-brand' : 'text-muted'" />
+          {{ link.label }}
+          <span
+            v-if="link.name === 'notifications' && unreadCount > 0"
+            class="ml-auto rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white"
+          >
+            {{ unreadCount }}
           </span>
-          <span class="truncate">{{ topic.label }}</span>
+        </RouterLink>
+      </li>
+      <li>
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 font-semibold text-ink/70 transition hover:bg-card"
+          @click="signOut"
+        >
+          <LogOut class="size-5 text-muted" />
+          Sair
         </button>
       </li>
     </ul>

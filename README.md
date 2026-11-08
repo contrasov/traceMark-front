@@ -16,16 +16,48 @@ Projeto desenvolvido para o trabalho de nuvem.
 
 ## Como rodar
 
+Pré-requisitos: Node.js ≥ 20.19 e a [tracemark-api](../tracemark-api) rodando (padrão `http://localhost:3333`).
+
 ```bash
-# install dependencies
 npm install
-
-# start dev server
-npm run dev
-
-# production build
-npm run build
-
-# preview production build
-npm run preview
+cp .env.example .env.local   # ajuste VITE_API_URL se a API estiver em outro endereço
+npm run dev                  # http://localhost:5173
 ```
+
+| Script | Função |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Checagem de tipos + build de produção (`dist/`) |
+| `npm run preview` | Serve o build de produção |
+
+## Ambiente completo local
+
+Para testar com upload real e marca-d'água, suba os três repositórios:
+
+```bash
+# tracemark-api
+docker compose --profile storage up -d --wait && npm run db:migrate && npm run storage:setup && npm run dev
+# tracemark-worker
+docker compose up -d --wait && npm run dev          # Worker
+npm run dev:s3-events                               # emula o evento S3 → Lambda (outro terminal)
+# traceMark-front
+npm run dev
+```
+
+Crie uma conta de **Fotógrafo** para publicar e outra de **Corredor** para ver o mural com marca-d'água.
+
+## Organização
+
+| Pasta | Responsabilidade |
+|---|---|
+| `src/api/` | Cliente HTTP e funções de cada recurso da API (`auth`, `users`, `photos`, `feed`, `comments`, `notifications`) |
+| `src/store/` | Estado global: sessão, notificações, tema e eventos do mural |
+| `src/composables/` | `usePolling`: atualização periódica do mural e das notificações |
+| `src/pages/` | Telas (mural, foto, perfil, usuário, notificações, configurações, login/cadastro) |
+| `src/components/` | Componentes reutilizáveis |
+
+| Variável | Descrição |
+|---|---|
+| `VITE_API_URL` | URL da API |
+| `VITE_POLLING_INTERVAL_MS` | Intervalo de atualização do mural e das notificações (padrão 10000) |
+| `VITE_MAX_PHOTOS_PER_UPLOAD` | Fotos por publicação; deve ser igual ao `MAX_PHOTOS_PER_UPLOAD` da API |
