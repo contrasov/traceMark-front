@@ -60,4 +60,6 @@ Crie uma conta de **Fotógrafo** para publicar e outra de **Corredor** para ver 
 |---|---|
 | `VITE_API_URL` | URL da API |
 | `VITE_POLLING_INTERVAL_MS` | Intervalo de atualização do mural e das notificações (padrão 10000) |
-| `VITE_MAX_PHOTOS_PER_UPLOAD` | Fotos por publicação; deve ser igual ao `MAX_PHOTOS_PER_UPLOAD` da API |
+| `VITE_MAX_PHOTOS_PER_UPLOAD` | Tamanho de cada lote enviado à API (padrão 30); deve ser igual ao `MAX_PHOTOS_PER_UPLOAD` da API |
+| `VITE_MAX_PHOTOS_PER_SELECTION` | Total de fotos por publicação, enviadas em lotes (padrão 300) |
+| `VITE_MAX_UPLOAD_SIZE_MB` | Tamanho máximo por arquivo (padrão 15); deve corresponder ao `MAX_UPLOAD_SIZE_BYTES` da API |

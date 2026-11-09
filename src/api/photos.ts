@@ -25,13 +25,27 @@ export const photosApi = {
   get: (id: string) => request<PhotoDetails>('GET', `/photos/${id}`),
 }
 
-export async function uploadToStorage(upload: PresignedUpload, file: File): Promise<void> {
+export function uploadToStorage(
+  upload: PresignedUpload,
+  file: File,
+  onProgress?: (fraction: number) => void,
+): Promise<void> {
   const form = new FormData()
   for (const [key, value] of Object.entries(upload.fields)) form.append(key, value)
   form.append('file', file)
 
-  const response = await fetch(upload.url, { method: upload.method, body: form }).catch(() => null)
-  if (!response?.ok) {
-    throw new ApiError(response?.status ?? 0, 'UPLOAD_FAILED', 'Falha ao enviar o arquivo para o armazenamento.')
-  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const fail = () =>
+      reject(new ApiError(xhr.status, 'UPLOAD_FAILED', 'Falha ao enviar o arquivo para o armazenamento.'))
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total)
+    }
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : fail())
+    xhr.onerror = fail
+    xhr.ontimeout = fail
+    xhr.open(upload.method, upload.url)
+    xhr.send(form)
+  })
 }
