@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
 import { computed, ref, watch } from 'vue'
-import { ChevronLeft, Send, Trash2 } from '@lucide/vue'
+import { ChevronLeft, Download, Send, ShoppingBag, Trash2 } from '@lucide/vue'
 import { commentsApi } from '../api/comments'
 import { ApiError, errorMessage } from '../api/http'
 import { photosApi } from '../api/photos'
+import { downloadOriginal, purchasesApi } from '../api/purchases'
 import type { Comment, PhotoDetails } from '../api/types'
 import AppShell from '../components/AppShell.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PhotoImage from '../components/PhotoImage.vue'
 import StateMessage from '../components/StateMessage.vue'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -28,7 +30,20 @@ const draftText = ref('')
 const sending = ref(false)
 const commentError = ref('')
 
+const buyDialogOpen = ref(false)
+const buying = ref(false)
+const buyError = ref('')
+const downloading = ref(false)
+const purchaseError = ref('')
+
+const commentToDelete = ref<Comment | null>(null)
+const deleting = ref(false)
+const deleteError = ref('')
+
 const isOwner = computed(() => photo.value?.photographer.id === currentUser.value?.id)
+const canDownload = computed(() =>
+  isOwner.value ? photo.value?.image?.variant === 'ORIGINAL' : !!photo.value?.purchasedAt,
+)
 
 async function load() {
   try {
@@ -76,17 +91,66 @@ async function sendComment() {
   }
 }
 
+function openBuyDialog() {
+  buyError.value = ''
+  buyDialogOpen.value = true
+}
+
+async function buy() {
+  const current = photo.value
+  if (!current) return
+  buying.value = true
+  buyError.value = ''
+  try {
+    const purchase = await purchasesApi.purchase(current.id)
+    current.purchasedAt = purchase.purchasedAt
+    buyDialogOpen.value = false
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      buyDialogOpen.value = false
+      await load()
+    } else {
+      buyError.value = errorMessage(err)
+    }
+  } finally {
+    buying.value = false
+  }
+}
+
+async function download() {
+  downloading.value = true
+  purchaseError.value = ''
+  try {
+    await downloadOriginal(photoId.value)
+  } catch (err) {
+    purchaseError.value = errorMessage(err)
+  } finally {
+    downloading.value = false
+  }
+}
+
 function canDelete(comment: Comment): boolean {
   return comment.author.id === currentUser.value?.id || isOwner.value
 }
 
-async function deleteComment(comment: Comment) {
-  if (!confirm('Excluir este comentário?')) return
+function askDeleteComment(comment: Comment) {
+  deleteError.value = ''
+  commentToDelete.value = comment
+}
+
+async function deleteComment() {
+  const comment = commentToDelete.value
+  if (!comment) return
+  deleting.value = true
+  deleteError.value = ''
   try {
     await commentsApi.remove(comment.id)
     comments.value = comments.value.filter((item) => item.id !== comment.id)
+    commentToDelete.value = null
   } catch (err) {
-    commentError.value = errorMessage(err)
+    deleteError.value = errorMessage(err)
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -184,6 +248,40 @@ usePolling(refreshWhileProcessing, 5000)
             <dd class="font-semibold text-red-600">{{ photo.processingError }}</dd>
           </div>
         </dl>
+
+        <div
+          v-if="photo.status === 'PUBLISHABLE' || canDownload"
+          class="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line p-4"
+        >
+          <p class="mr-auto text-sm text-muted">
+            <template v-if="isOwner">Você é o fotógrafo: baixe a original quando quiser.</template>
+            <template v-else-if="photo.purchasedAt">
+              <span class="font-bold text-emerald-700">Comprada</span> em {{ formatDateTime(photo.purchasedAt) }}.
+              O link de download vale por poucos segundos.
+            </template>
+            <template v-else>Compre para baixar a original, sem marca-d'água. (Pagamento simulado)</template>
+          </p>
+          <button
+            v-if="canDownload"
+            type="button"
+            class="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-page transition hover:opacity-90 disabled:opacity-50"
+            :disabled="downloading"
+            @click="download"
+          >
+            <Download class="size-4" />
+            {{ downloading ? 'Gerando link...' : 'Baixar original' }}
+          </button>
+          <button
+            v-else-if="!isOwner"
+            type="button"
+            class="flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-105 disabled:opacity-50"
+            @click="openBuyDialog"
+          >
+            <ShoppingBag class="size-4" />
+            Comprar por {{ formatPrice(photo.price) }}
+          </button>
+          <p v-if="purchaseError" class="w-full text-sm text-red-600">{{ purchaseError }}</p>
+        </div>
       </article>
 
       <section class="mt-4 rounded-3xl bg-card p-5 md:p-7" aria-label="Comentários">
@@ -228,7 +326,7 @@ usePolling(refreshWhileProcessing, 5000)
               type="button"
               aria-label="Excluir comentário"
               class="grid size-8 place-items-center rounded-full text-muted transition hover:bg-sub hover:text-red-600"
-              @click="deleteComment(comment)"
+              @click="askDeleteComment(comment)"
             >
               <Trash2 class="size-4" />
             </button>
@@ -244,6 +342,52 @@ usePolling(refreshWhileProcessing, 5000)
           Ver mais comentários
         </button>
       </section>
+
+      <ConfirmDialog
+        :open="buyDialogOpen"
+        title="Confirmar compra"
+        :confirm-label="`Comprar por ${formatPrice(photo.price)}`"
+        busy-label="Processando..."
+        :busy="buying"
+        :error="buyError"
+        @confirm="buy"
+        @cancel="buyDialogOpen = false"
+      >
+        <div class="flex items-center gap-3 rounded-2xl bg-sub p-3">
+          <img
+            v-if="photo.image"
+            :src="photo.image.url"
+            :alt="photo.title"
+            class="size-16 shrink-0 rounded-xl object-cover"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-bold">{{ photo.title }}</p>
+            <p class="text-xs text-muted">por {{ photo.photographer.name }}</p>
+          </div>
+          <p class="text-lg font-extrabold text-brand">{{ formatPrice(photo.price) }}</p>
+        </div>
+        <p class="mt-3 text-muted">
+          Após a compra você poderá baixar a foto original, sem marca-d'água, sempre que quiser.
+        </p>
+        <p class="mt-2 text-xs text-muted">Pagamento simulado: nenhuma cobrança real será feita.</p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        :open="!!commentToDelete"
+        title="Excluir comentário"
+        confirm-label="Excluir"
+        busy-label="Excluindo..."
+        tone="danger"
+        :busy="deleting"
+        :error="deleteError"
+        @confirm="deleteComment"
+        @cancel="commentToDelete = null"
+      >
+        <p>Tem certeza que deseja excluir este comentário? Essa ação não pode ser desfeita.</p>
+        <p v-if="commentToDelete" class="mt-3 line-clamp-3 rounded-2xl bg-sub px-4 py-3 italic text-ink/70">
+          “{{ commentToDelete.content }}”
+        </p>
+      </ConfirmDialog>
     </template>
   </AppShell>
 </template>

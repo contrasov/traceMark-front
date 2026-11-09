@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { Bell, House, LogOut, Settings, User } from '@lucide/vue'
+import { Bell, House, LogOut, Settings, ShoppingBag, User } from '@lucide/vue'
 import { unreadCount } from '../store/notifications'
 import { logout } from '../store/session'
 
@@ -10,6 +10,7 @@ const router = useRouter()
 const links = [
   { to: '/', name: 'home', label: 'Início', icon: House },
   { to: '/notificacoes', name: 'notifications', label: 'Notificações', icon: Bell },
+  { to: '/compras', name: 'purchases', label: 'Compras', icon: ShoppingBag },
   { to: '/perfil', name: 'profile', label: 'Perfil', icon: User },
   { to: '/configuracoes', name: 'settings', label: 'Configurações', icon: Settings },
 ]

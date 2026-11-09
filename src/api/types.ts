@@ -1,7 +1,7 @@
 export type UserRole = 'PHOTOGRAPHER' | 'USER'
 export type PhotoStatus = 'UPLOADING' | 'PROCESSING' | 'PUBLISHABLE' | 'ERROR'
 export type ImageVariant = 'ORIGINAL' | 'WATERMARKED'
-export type NotificationType = 'PHOTO_PUBLISHED' | 'PHOTO_PROCESSING_FAILED' | 'NEW_COMMENT'
+export type NotificationType = 'PHOTO_PUBLISHED' | 'PHOTO_PROCESSING_FAILED' | 'NEW_COMMENT' | 'PHOTO_SOLD'
 
 export interface UserSummary {
   id: string
@@ -61,7 +61,25 @@ export interface Comment {
 }
 
 export interface PhotoDetails extends Photo {
+  purchasedAt: string | null
   comments: Page<Comment>
+}
+
+export interface Purchase {
+  id: string
+  photoId: string
+  price: string
+  purchasedAt: string
+}
+
+export interface PurchasedPhoto extends Purchase {
+  photo: Photo
+}
+
+export interface OriginalDownload {
+  url: string
+  expiresAt: string
+  fileName: string
 }
 
 export interface PresignedUpload {

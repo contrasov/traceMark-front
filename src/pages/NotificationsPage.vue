@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRouter } from 'vue-router'
 import { onMounted, ref, watch } from 'vue'
-import { BellOff, CheckCheck, ChevronLeft, CircleAlert, CircleCheck, MessageCircle } from '@lucide/vue'
+import { BellOff, CheckCheck, ChevronLeft, CircleAlert, CircleCheck, MessageCircle, ShoppingBag } from '@lucide/vue'
 import { errorMessage } from '../api/http'
 import { notificationsApi } from '../api/notifications'
 import type { Notification, NotificationType } from '../api/types'
@@ -15,6 +15,7 @@ const ICONS: Record<NotificationType, typeof CircleCheck> = {
   PHOTO_PUBLISHED: CircleCheck,
   PHOTO_PROCESSING_FAILED: CircleAlert,
   NEW_COMMENT: MessageCircle,
+  PHOTO_SOLD: ShoppingBag,
 }
 
 const router = useRouter()
